@@ -1,49 +1,20 @@
 
-import pandas as pd
-from NaiveBayes import NaiveBayes
-from DecisionTree import DecisionTree
 from GetData import getData
-from Forest import Forest
 import numpy as np
+import random
 from getCreditData import getCreditData
-from sklearn.metrics import confusion_matrix
-# np.random.seed(1)
-# tree = DecisionTree()
-# trainSet, testSet, trainLab, testLab = getData()
-#tree.fit(trainSet, trainLab)
-#tlab = tree.predict(testSet)
-#bayes = NaiveBayes()
-#bayes.fit(trainSet, trainLab)
-#tlab = bayes.predict(testSet)
-#
-# forest = Forest(6,6)
-# forest.fit(trainSet, trainLab)
-# tlab = forest.predict(testSet)
-# print(sum(testLab != tlab))
-trainSet, testSet, trainLab, testLab = getCreditData()
-forest = DecisionTree()
-forest.fit(trainSet, trainLab)
-# tlab = forest.predict(testSet)
-# tlab2 = forest.predict(trainSet)
-# print(sum(trainLab != tlab2))
-# print(sum(testLab != tlab))
-# forest = NaiveBayes()
-# forest.fit(trainSet, trainLab)
-# tlab = forest.predict(testSet)
-# tlab2 = forest.predict(trainSet)
-# print(tlab.describe())
-# print(tlab2.describe())
-# forest = Forest(10,0)
-# forest.fit(trainSet, trainLab)
-#
-tlab = forest.predict(testSet)
-tlab2 = forest.predict(trainSet)
-with pd.option_context('display.max_rows', None, 'display.max_columns',
-                       None):  # more options can be specified also
-    print(tlab2)
-    print(tlab)
-print(confusion_matrix(trainLab,tlab2))
-print(confusion_matrix(testLab, tlab))
+from Tests import treeTest, nbcTest, forestTest
+if __name__ == '__main__':
+    random.seed(1)
+    np.random.seed(1)
+    trainSet, testSet, trainLab, testLab = getData(split=0.2)
+    treeTest(trainSet, trainLab, testSet, testLab, visualizeName="grzyby.pdf")
+    # nbcTest(trainSet, trainLab, testSet, testLab)
+    trainSet, testSet, trainLab, testLab = getCreditData(split=0.2)
+    treeTest(trainSet, trainLab, testSet, testLab, visualizeName="kredyt.pdf")
+    treeTest(trainSet, trainLab, testSet, testLab, pruneSplit=0.2, visualizeName="kredytPruned.pdf")
+    forestTest(trainSet,trainLab,testSet,testLab, 10, 10)
+    forestTest(trainSet,trainLab,testSet,testLab, 10, 10,pruneTreeSplit= 0.3)
 
 
 

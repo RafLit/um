@@ -6,11 +6,11 @@ import numpy as np
 import random
 
 class Forest(Classifier):
-    def __init__(self, ntrees, nbayes):
+    def __init__(self, ntrees, nbayes, pruneSplit=0.0):
         super().__init__()
         self.classifiers = []
         for i in range(ntrees):
-            self.classifiers.append(DecisionTree())
+            self.classifiers.append(DecisionTree(pruneSplit=pruneSplit))
         for i in range(nbayes):
             self.classifiers.append(NaiveBayes())
 
@@ -18,22 +18,20 @@ class Forest(Classifier):
         for i in range(len(self.classifiers)):
             tset, tlab = self.bagData(trainSet, trainLab)
             tset = self.chooseFeatures(tset)
-            print(tset, tlab)
             self.classifiers[i].fit(tset, tlab)
 
     def predict(self, testSet):
         votes = pd.DataFrame(index=testSet.index)
         for i in range(len(self.classifiers)):
             res = self.classifiers[i].predict(testSet)
-            print(res)
             res.name += str(i)
             votes = votes.join(res)
-        with pd.option_context('display.max_rows', None, 'display.max_columns',
-                               None):  # more options can be specified also
-            print(votes)
         voteCount = votes.apply(pd.value_counts, axis=1)
 
         return voteCount.idxmax(axis=1)
+    def prune(self, pruneSet, pruneLab):
+        for i in range(len(self.classifiers)):
+            self.classifiers[i].prune(pruneSet, pruneLab)
 
 
 

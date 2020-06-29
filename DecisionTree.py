@@ -2,17 +2,14 @@ from Classifier import Classifier
 import math
 import numpy as np
 import pandas as pd
-class TreeElement(Classifier):
+import random
+import ete3
 
+class TreeNode(Classifier):
     def __init__(self):
         super().__init__()
-        self.splitFeature = ''
+        self.leafes = {}
         self.branches = {}
-
-class TreeNode(TreeElement):
-    def __init__(self):
-        super().__init__()
-        self.subElements = []
 
 
     def fit(self, trainSet, trainLab):
@@ -20,7 +17,6 @@ class TreeNode(TreeElement):
         for feature in trainSet.columns:
             column = trainSet[feature]
             for value in column.unique():
-                reducedSet = trainSet.loc[column==value,:]
                 reducedLab = trainLab[column==value]
                 entropy = 0.
                 for count in reducedLab.value_counts():
@@ -40,8 +36,8 @@ class TreeNode(TreeElement):
                 if not (x == 0. or x == 1.):
                     entropy -= x * math.log2(x)
             if entropy == 0.0 or len(trainSet.columns) == 1:
-                self.branches[value] = TreeLeaf()
-                self.branches[value].fit(reducedSet, reducedLab)
+                self.leafes[value] = TreeLeaf()
+                self.leafes[value].fit(reducedLab)
             else:
                 self.branches[value] = TreeNode()
                 self.branches[value].fit(reducedSet.drop(labels=[self.splitFeature],axis='columns'), reducedLab)
@@ -50,36 +46,111 @@ class TreeNode(TreeElement):
     def predict(self, testSet):
         values = testSet.loc[:,self.splitFeature].unique()
         tLab = pd.Series(None,index=testSet.index, name='class')
-        print(tLab)
-        for value in [val for val in values if val in self.branches]:
-            reducedSet = testSet.loc[testSet.loc[:,self.splitFeature] == value,:]
-            tLab[testSet[self.splitFeature] == value] = self.branches[value].predict(reducedSet)
+        for value in values:
+            if value in list(self.leafes.keys()) + list(self.branches.keys()):
+                if value in list(self.leafes.keys()):
+                    tLab[testSet[self.splitFeature] == value] = self.leafes[value].predict()
+                if value in list(self.branches.keys()):
+                    reducedSet = testSet.loc[testSet.loc[:,self.splitFeature] == value,:]
+                    tLab[testSet[self.splitFeature] == value] = self.branches[value].predict(reducedSet)
+            else:
+                randChoice = random.choice(list(self.leafes.keys()) + list(self.branches.keys()))
+                if randChoice in list(self.leafes.keys()):
+                    tLab[testSet[self.splitFeature] == value] = self.leafes[randChoice].predict()
+                else:
+                    reducedSet = testSet.loc[testSet.loc[:,self.splitFeature] == value,:]
+                    tLab[testSet[self.splitFeature] == value] = self.branches[randChoice].predict(reducedSet)
         return tLab
 
+    def prune(self, pruneSet, pruneLab):
+        toDel = []
+        for value in self.branches.keys():
+            reducedSet = pruneSet.loc[pruneSet.loc[:, self.splitFeature] == value, :]
+            if not reducedSet.shape[0]:
+                continue
+            reducedLab = pruneLab[pruneSet[self.splitFeature] == value]
+            nodeRes = self.branches[value].predict(reducedSet)
+            nodeErr = sum(nodeRes != reducedLab)
+            leaf = TreeLeaf()
+            leaf.fit(reducedLab)
+            leafRes = pd.Series(None, index=reducedLab.index, name=reducedLab.name)
+            leafRes[:] = leaf.predict()
+            leafErr = sum(leafRes != reducedLab)
+            if leafErr < nodeErr:
+                self.leafes[value] = leaf
+                toDel.append(value)
+            else:
+                self.branches[value].prune(reducedSet, reducedLab)
+        for d in toDel:
+            del self.branches[d]
 
-class TreeLeaf(TreeElement):
+    def visualize(self):
+        me = ete3.TreeNode(name=self.splitFeature)
+        for key in self.leafes.keys():
+            me.add_child(self.leafes[key].visualize())
+        for key in self.branches.keys():
+            me.add_child(self.branches[key].visualize())
+        return me
+
+
+
+
+
+
+class TreeLeaf:
 
     def __init__(self):
         super().__init__()
         self.decision = None
 
-    def fit(self, trainSet, trainLab):
+    def fit(self,  trainLab):
         counts = trainLab.value_counts()
         self.decision = counts.index[counts.argmax()]
-        print(self.decision)
 
-    def predict(self, testSet):
-        print(self.decision)
+    def predict(self):
         return self.decision
+
+    def visualize(self):
+        return ete3.TreeNode(name=self.decision)
 
 class DecisionTree(Classifier):
 
-    def __init__(self):
+    def __init__(self, pruneSplit = 0.0):
         super().__init__()
         self.rootNode = TreeNode()
+        self.pruneSplit = pruneSplit
 
     def fit(self, trainSet, trainLab):
+        n = trainLab.shape[0]
+        split = int(self.pruneSplit*n)
+        pruneSet = trainSet.iloc[:split]
+        pruneLab = trainLab.iloc[:split]
+        trainSet = trainSet.iloc[split:]
+        trainLab = trainLab.iloc[split:]
         self.rootNode.fit(trainSet, trainLab)
+        self.rootNode.prune(pruneSet, pruneLab)
 
     def predict(self, testSet):
         return self.rootNode.predict(testSet)
+
+    def prune(self, pruneSet, pruneLab):
+        self.rootNode.prune(pruneSet, pruneLab)
+
+    def visualize(self, fileName):
+        t = self.rootNode.visualize()
+        ts = ete3.TreeStyle()
+
+        def my_layout(node):
+            if node.is_leaf():
+                # If terminal node, draws its name
+                name_face = ete3.AttrFace("name")
+            else:
+                # If internal node, draws label with smaller font size
+                name_face = ete3.AttrFace("name", fsize=10)
+            # Adds the name face to the image at the preferred position
+            ete3.faces.add_face_to_node(name_face, node, column=0, position="branch-right")
+        ts.layout_fn = my_layout
+        ts.show_leaf_name = False
+        t.render(file_name=fileName, tree_style=ts)
+        pass
+

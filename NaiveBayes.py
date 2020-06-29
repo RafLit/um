@@ -20,7 +20,6 @@ class NaiveBayes(Classifier):
                 for valName, valCount in valueCounts.items():
                     self.PXWhenClass[feature].loc[valName, cls] = valCount / ClassCounts[cls]
         self.Pclass = ClassCounts / sumClassCounts
-        print(trainLab)
 
     def predict(self, testSet):
         n = testSet.shape[0]
@@ -41,7 +40,6 @@ class NaiveBayes(Classifier):
         classRes = classProbs.idxmax(axis=1)
         classRes.name = 'class'
         classRes.index = testSet.index
-        print(classRes.name)
         return classRes
 
 
