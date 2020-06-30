@@ -1,22 +1,20 @@
-"""@package docstring
-Documentation for this module.
+##
+# @author Rafal Litka
+# @file Classifier.py
 
-More details.
-"""
+
+## Klasa bazowa klasyfikatora
 class Classifier:
-    """Documentation for a class.
-
-        More details.
-    """
     def __init__(self):
-        """Documentation for a method."""
         pass
 
+    ## testowanie klasyfikatora
+    # @param testSet zbiór testowy
     def predict(self, testSet):
-        """Documentation for a methodMore details."""
         raise NotImplementedError
 
-    ## Documentation for a method.
-    # @param trainSet test
+    ## trenowanie klasyfikatora
+    # @param trainSet zbiór treningowy
+    # @param trainLab etykiety dla zbioru treningowego
     def fit(self, trainSet, trainLab):
         raise NotImplementedError

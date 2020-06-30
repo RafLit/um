@@ -1,11 +1,17 @@
+#!/usr/bin/env python3
+##
+# @author Rafal Litka
+# @file DecisionTree.py
+
 from Classifier import Classifier
 import math
-import numpy as np
 import pandas as pd
 import random
 import ete3
 
+##  Wezel drzewa
 class TreeNode(Classifier):
+
     def __init__(self):
         super().__init__()
         self.leafes = {}
@@ -18,27 +24,34 @@ class TreeNode(Classifier):
             column = trainSet[feature]
             for value in column.unique():
                 reducedLab = trainLab[column==value]
+                # wyznaczanie entropii
                 entropy = 0.
                 for count in reducedLab.value_counts():
-
                     x = count/len(reducedLab)
                     if not (x == 0. or x == 1.):
                         entropy -= x*math.log2(x)
                 entropies[feature] += len(reducedLab)/len(trainLab)*entropy
+
+        # wybor cechy o minimalnej entropii
         self.splitFeature = min(entropies,key=entropies.get)
         column = trainSet[self.splitFeature]
         for value in trainSet[self.splitFeature].unique():
+
             reducedSet = trainSet.loc[column == value, :]
             reducedLab = trainLab[column == value]
+            # obliczanie entropii
             entropy = 0.
             for count in reducedLab.value_counts():
                 x = count / len(reducedLab)
                 if not (x == 0. or x == 1.):
                     entropy -= x * math.log2(x)
+
             if entropy == 0.0 or len(trainSet.columns) == 1:
+                # tworzenie liscia
                 self.leafes[value] = TreeLeaf()
                 self.leafes[value].fit(reducedLab)
             else:
+                # tworzenie drzewa
                 self.branches[value] = TreeNode()
                 self.branches[value].fit(reducedSet.drop(labels=[self.splitFeature],axis='columns'), reducedLab)
 
@@ -54,6 +67,7 @@ class TreeNode(Classifier):
                     reducedSet = testSet.loc[testSet.loc[:,self.splitFeature] == value,:]
                     tLab[testSet[self.splitFeature] == value] = self.branches[value].predict(reducedSet)
             else:
+                # losowy wybor jezeli atrybutu nie bylo w zbiorze trenujacym
                 randChoice = random.choice(list(self.leafes.keys()) + list(self.branches.keys()))
                 if randChoice in list(self.leafes.keys()):
                     tLab[testSet[self.splitFeature] == value] = self.leafes[randChoice].predict()
@@ -62,6 +76,9 @@ class TreeNode(Classifier):
                     tLab[testSet[self.splitFeature] == value] = self.branches[randChoice].predict(reducedSet)
         return tLab
 
+    ## Przycinanie drzewa
+    # @param pruneSet zestaw danych do przyciecia drzewa
+    # @param pruneLab zestaw etykiet do przyciecia drzewa
     def prune(self, pruneSet, pruneLab):
         toDel = []
         for value in self.branches.keys():
@@ -84,6 +101,7 @@ class TreeNode(Classifier):
         for d in toDel:
             del self.branches[d]
 
+    ## wizualizacja drzewa
     def visualize(self):
         me = ete3.TreeNode(name=self.splitFeature)
         for key in self.leafes.keys():
@@ -97,6 +115,7 @@ class TreeNode(Classifier):
 
 
 
+## lisc drzewa
 class TreeLeaf:
 
     def __init__(self):
@@ -110,10 +129,13 @@ class TreeLeaf:
     def predict(self):
         return self.decision
 
+    ## wizualizacja liscia
     def visualize(self):
         return ete3.TreeNode(name=self.decision)
 
+## Drzewo decyzyjne
 class DecisionTree(Classifier):
+
 
     def __init__(self, pruneSplit = 0.0):
         super().__init__()
@@ -133,13 +155,14 @@ class DecisionTree(Classifier):
     def predict(self, testSet):
         return self.rootNode.predict(testSet)
 
+    ## Przycinanie drzewa
     def prune(self, pruneSet, pruneLab):
         self.rootNode.prune(pruneSet, pruneLab)
 
+    ## Wizualizacja drzewa
     def visualize(self, fileName):
         t = self.rootNode.visualize()
         ts = ete3.TreeStyle()
-
         def my_layout(node):
             if node.is_leaf():
                 # If terminal node, draws its name

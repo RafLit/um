@@ -1,11 +1,20 @@
+##
+# @author Rafal Litka
+# @file Forest.py
+
 from Classifier import Classifier
 from DecisionTree import DecisionTree
 from NaiveBayes import NaiveBayes
 import pandas as pd
 import numpy as np
-import random
 
+## Las losowy
 class Forest(Classifier):
+
+    ## Tworzenie poszczegolnych klasyfikatorow w lesie
+    # @param ntrees ilosc drzew w lesie
+    # @param nbayes ilosc NBC w lesie
+    # @param pruneSplit czesc danych trenujacych przeznaczona do przycinania
     def __init__(self, ntrees, nbayes, pruneSplit=0.0):
         super().__init__()
         self.classifiers = []
@@ -29,20 +38,18 @@ class Forest(Classifier):
         voteCount = votes.apply(pd.value_counts, axis=1)
 
         return voteCount.idxmax(axis=1)
-    def prune(self, pruneSet, pruneLab):
-        for i in range(len(self.classifiers)):
-            self.classifiers[i].prune(pruneSet, pruneLab)
 
 
-
+    ## wybranie probek do zbioru treningowego ze zwracaniem
+    # @param rozmiar zbioru trenujacego stworzonego w stosunku do trenujacego oryginalnego
     def bagData(self, trainSet, trainLab, part=1):
         n = trainSet.shape[0]
         randindex = np.random.randint(0,n,int(part*n))
         newTrainSet = trainSet.iloc[randindex]
         newTrainLab = trainLab.iloc[randindex]
-
         return newTrainSet, newTrainLab
 
+    ## Wybieranie polowy cech do trenowania klasyfikatora
     def chooseFeatures(self, trainSet):
         nfeatures = trainSet.shape[1]
         i = np.array(range(nfeatures))
